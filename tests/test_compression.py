@@ -349,3 +349,38 @@ def test_layer_sensitivity_and_allocation_on_mobilenet():
     cfg = CompressionConfig(w_bits=8, a_bits=8, layer_w_bits=bits)
     q = QMobileNetV2.from_float(m, cfg)
     assert abs(q.average_weight_bits() - avg) < 1e-6
+
+
+# ------------------------------------------------- quantization-aware fine-tuning
+def test_quantization_aware_finetuning_runs_end_to_end():
+    """A few QAT steps with distillation lower the loss, train the steps and export cleanly."""
+    from mbv2.data import GpuAugment, Split
+    from mbv2.engine import build_sgd, train_one_epoch
+    torch.manual_seed(0)
+    device = torch.device("cpu")
+    teacher = random_model()
+    u8 = images(32, seed=3)
+    split = Split(u8, teacher(normalise(u8)).argmax(1))          # labels the teacher agrees with
+    cfg = CompressionConfig(w_bits=3, a_bits=3, w_bits_first=8, w_bits_last=8, a_bits_linear=8)
+    q = QMobileNetV2.from_float(teacher, cfg)
+    q.calibrate(normalise(u8))
+    q.dropout.p = 0.0
+    steps_before = [p.detach().clone() for p in q.step_parameters()]
+    codes_before = q.head.wq.codes(q.head.conv.weight).clone()
+
+    opt = build_sgd(q, lr=0.01, weight_decay=1e-4)
+    no_decay = {id(p) for p in opt.param_groups[1]["params"]}
+    assert all(id(p) in no_decay for p in q.step_parameters())    # steps are never decayed
+    tf = GpuAugment(device, augment=False)
+    gen = torch.Generator().manual_seed(0)
+    losses = [train_one_epoch(q, split, 16, opt, None, tf, gen, teacher=teacher, kd_alpha=0.7)[0]
+              for _ in range(4)]
+    assert all(l == l for l in losses) and losses[-1] < losses[0]
+    assert any(not torch.equal(a, b) for a, b in zip(steps_before, q.step_parameters()))
+    assert not torch.equal(codes_before, q.head.wq.codes(q.head.conv.weight))
+
+    q.eval()
+    packed = export_packed(q)
+    agree = (packed(u8).argmax(1) == q(normalise(u8)).argmax(1)).float().mean()
+    assert agree >= 0.9
+    assert packed.size_report()["avg_weight_bits"] < 3.1
