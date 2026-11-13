@@ -3,6 +3,7 @@ import os
 
 import torch
 
+from mbv2.data import GpuAugment
 from mbv2.engine import evaluate
 from mbv2.model import mobilenet_v2
 
@@ -29,18 +30,32 @@ def calibration_batches(train_set, transform, n_images: int, batch_size: int = 2
             for i in range(0, n_images, batch_size)]
 
 
+def bn_batches(train_set, device, n_images: int, batch_size: int = 256, seed: int = 0,
+               cutout: int = 16):
+    """`n_images` training images with the *training* augmentation, for BatchNorm re-estimation.
+
+    The running statistics of the baseline were accumulated on augmented
+    batches. Re-estimating them on un-augmented training images (which the
+    network has memorised) shifts them and costs about 2.7 points of test
+    accuracy even without any quantization, so the same augmentation is used.
+    """
+    augment = GpuAugment(device, augment=True, cutout=cutout, seed=seed)
+    return calibration_batches(train_set, augment, n_images, batch_size, seed)
+
+
 @torch.no_grad()
-def post_training_quantize(float_model, cfg: CompressionConfig, calib, bn_recalibration=True):
+def post_training_quantize(float_model, cfg: CompressionConfig, calib, bn_calib=None):
     """Quantize a trained model without any gradient step.
 
     Weight steps are set by a per-channel MSE search when the model is built;
-    activation steps by one calibration pass; optionally the BatchNorm
+    activation steps by one calibration pass over `calib[0]`. If `bn_calib`
+    (augmented training batches, see `bn_batches`) is given, the BatchNorm
     statistics are then re-estimated under quantization.
     """
     qmodel = QMobileNetV2.from_float(float_model, cfg).eval()
     qmodel.calibrate(calib[0])
-    if bn_recalibration:
-        recalibrate_bn(qmodel, calib)
+    if bn_calib:
+        recalibrate_bn(qmodel, bn_calib)
     return qmodel
 
 

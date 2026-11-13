@@ -15,7 +15,7 @@ import torch
 
 from compressor.config import CompressionConfig
 from compressor.packed import export_packed
-from compressor.pipeline import (calibration_batches, evaluate_packed, load_baseline,
+from compressor.pipeline import (bn_batches, calibration_batches, evaluate_packed, load_baseline,
                                  load_packed, measure, post_training_quantize)
 from mbv2.data import GpuAugment, load_cifar10
 from mbv2.engine import evaluate
@@ -78,7 +78,9 @@ def main():
     else:
         cfg = CompressionConfig(w_bits=args.weight_quant_bits, a_bits=args.activation_quant_bits)
         calib = calibration_batches(train_set, eval_tf, args.calib_images, seed=args.seed)
-        qmodel = post_training_quantize(model, cfg, calib, args.bn_recalibration)
+        bn_calib = (bn_batches(train_set, device, args.calib_images, seed=args.seed)
+                    if args.bn_recalibration else None)
+        qmodel = post_training_quantize(model, cfg, calib, bn_calib)
         packed = export_packed(qmodel)
     _, q_acc = evaluate_packed(packed, test_set)
     print(f"Quantized Test Acc={q_acc:.2f}%")

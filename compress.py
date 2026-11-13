@@ -34,8 +34,8 @@ import yaml
 
 from compressor.config import CompressionConfig
 from compressor.packed import export_packed
-from compressor.pipeline import (calibration_batches, evaluate_packed, load_baseline, measure,
-                                 post_training_quantize, save_packed)
+from compressor.pipeline import (bn_batches, calibration_batches, evaluate_packed, load_baseline,
+                                 measure, post_training_quantize, save_packed)
 from compressor.qmodel import QMobileNetV2
 from compressor.sensitivity import allocate_bits, layer_sensitivity
 from mbv2.data import GpuAugment, load_cifar10
@@ -105,7 +105,9 @@ def sensitivity_table(float_model, train_set, eval_tf, cfg):
             return table
     print("[sensitivity] measuring per-layer sensitivity ...", flush=True)
     batches = calibration_batches(train_set, eval_tf, cfg["sensitivity_images"], 250, seed=1)
-    table = layer_sensitivity(float_model, batches, choices)
+    bn_calib = (bn_batches(train_set, batches[0].device, 1000, 250, seed=1, cutout=cfg["cutout"])
+                if cfg["bn_recalibration"] else None)
+    table = layer_sensitivity(float_model, batches, choices, bn_calib)
     save_json(table, path)
     return table
 
@@ -157,7 +159,9 @@ def compress(cfg):
 
     # ---- quantizers + calibration (this is already post-training quantization)
     calib = calibration_batches(train_set, eval_tf, cfg["calib_images"], seed=cfg["seed"])
-    qmodel = post_training_quantize(teacher, cc, calib, cfg["bn_recalibration"])
+    bn_calib = (bn_batches(train_set, device, cfg["calib_images"], seed=cfg["seed"],
+                           cutout=cfg["cutout"]) if cfg["bn_recalibration"] else None)
+    qmodel = post_training_quantize(teacher, cc, calib, bn_calib)
     _, ptq_acc = evaluate(qmodel, test_set, eval_tf, batch_size=500)
     print(f"[{name}] average weight bits {qmodel.average_weight_bits():.3f} | "
           f"after calibration (PTQ) test acc {ptq_acc:.2f}%", flush=True)

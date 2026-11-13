@@ -8,7 +8,8 @@ wastes bits. The allocator below
   1. measures, for every layer and every candidate bit-width, how much the
      network output changes when only that layer's weights are quantized
      (KL divergence between the full-precision and the perturbed predictions
-     on a calibration set), and
+     on a calibration set, after re-estimating the BatchNorm statistics, so
+     that only the damage that a cheap correction cannot undo is counted), and
   2. starting from the highest bit-width everywhere, repeatedly lowers the
      bit-width of the layer where doing so costs the least output change per
      bit of memory saved, until the requested average bit-width is reached.
@@ -20,7 +21,7 @@ import torch
 import torch.nn.functional as F
 
 from .config import CompressionConfig
-from .qmodel import QConvBN, QMobileNetV2
+from .qmodel import QConvBN, QMobileNetV2, recalibrate_bn
 from .quantizers import Quantizer
 
 
@@ -29,14 +30,20 @@ def _weight(layer):
 
 
 @torch.no_grad()
-def layer_sensitivity(float_model, batches, bit_choices=(2, 3, 4, 5, 6, 8)) -> dict:
+def layer_sensitivity(float_model, batches, bit_choices=(2, 3, 4, 5, 6, 8),
+                      bn_calib=None) -> dict:
     """KL(full precision || one layer quantized) for every layer and bit-width.
 
-    `batches` is a list of normalised image batches. Returns
+    `batches` is a list of normalised image batches. If `bn_calib` (a list of
+    augmented training batches) is given, the BatchNorm statistics are
+    re-estimated on it after each perturbation, and also for the reference,
+    so that the estimation noise is common to both. Returns
     {"sizes": {layer: number of weights}, "kl": {layer: {bits: value}}}.
     """
     # A wrapper with all quantizers off gives named access to every layer.
     model = QMobileNetV2.from_float(float_model, CompressionConfig(w_bits=32, a_bits=32)).eval()
+    if bn_calib:
+        recalibrate_bn(model, bn_calib)
     reference = [F.softmax(model(x), dim=1) for x in batches]
     sizes, kl = {}, {}
     for layer in model.weight_layers():
@@ -47,6 +54,8 @@ def layer_sensitivity(float_model, batches, bit_choices=(2, 3, 4, 5, 6, 8)) -> d
             q = Quantizer(bits, signed=True, channels=w.shape[0]).to(w.device).eval()
             q.init_from(original)
             w.data.copy_(q(original))
+            if bn_calib:
+                recalibrate_bn(model, bn_calib)  # resets, then re-estimates all statistics
             total = 0.0
             for x, ref in zip(batches, reference):
                 log_p = F.log_softmax(model(x), dim=1)
