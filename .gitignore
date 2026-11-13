@@ -1,0 +1,34 @@
+# environment / caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# dataset (downloaded automatically, see README)
+data/
+
+# W&B local run files and logs
+/wandb/
+logs/
+
+# checkpoints: only the baseline and the final compressed model are committed
+checkpoints/*
+!checkpoints/baseline.pt
+!checkpoints/compressed/
+checkpoints/compressed/*
+!checkpoints/compressed/best.pt
+
+# LaTeX build artefacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+
+# course handout
+CS6886W_20206___Assignment_2.pdf
+
+# never commit credentials
+.env
+*.token
+.netrc
