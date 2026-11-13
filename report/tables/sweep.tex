@@ -1,0 +1,12 @@
+\begin{tabular}{llrrrrrrrr}
+\toprule
+Run & Method & \shortstack{W bits\\(avg)} & \shortstack{A bits\\(ReLU6 / lin.)} & \shortstack{Test\\acc. (\%)} & \shortstack{Drop\\(pts)} & \shortstack{Size\\(MB)} & \shortstack{Model\\ratio} & \shortstack{Weight\\ratio} & \shortstack{Act.\\ratio} \\
+\midrule
+ptq\_w8\_a4 & PTQ & 8.00 & 4 / 4 & 93.48 & +1.88 & 2.167 & 4.00 & 4.00 & 7.99 \\
+ptq\_w8\_a8 & PTQ & 8.00 & 8 / 8 & 95.30 & +0.06 & 2.167 & 4.00 & 4.00 & 4.00 \\
+ptq\_w6\_a6 & PTQ & 6.00 & 6 / 6 & 94.94 & +0.42 & 1.642 & 5.28 & 5.33 & 5.33 \\
+ptq\_w4\_a4 & PTQ & 4.00 & 4 / 4 & 91.11 & +4.25 & 1.117 & 7.76 & 8.00 & 7.99 \\
+\textbf{ptq\_w4\_a8} & PTQ & 4.00 & 8 / 8 & 95.02 & +0.34 & 1.117 & 7.76 & 8.00 & 4.00 \\
+ptq\_w3\_a3 & PTQ & 3.00 & 3 / 3 & 64.05 & +31.31 & 0.854 & 10.14 & 10.67 & 10.63 \\
+\bottomrule
+\end{tabular}

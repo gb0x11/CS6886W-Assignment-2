@@ -127,7 +127,39 @@ SGD with Nesterov momentum and a cosine schedule is the standard recipe for CIFA
 
 \subsection*{(c) Final test accuracy, curves and failure modes}
 
-\BaselineText
+\textbf{Final result.} After \BaselineEpochs{} epochs the full-precision MobileNet-v2 reaches a \textbf{test top-1 accuracy of \BaselineAcc\%} (test cross-entropy 0.226, 464 errors on 10{,}000 images). Its accuracy on the un-augmented training set is \BaselineTrainAcc\%. This is the model after the last epoch; the best epoch on the test set would have been \BaselineBestEpochAcc\%, but the test set was not used for selection. Training took \BaselineHours{} hours on the laptop GPU.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/baseline_curves.png}
+\caption{Loss and top-1 accuracy of the baseline per epoch, and the learning-rate schedule. The training curves are measured on the augmented mini-batches during the epoch (with label smoothing in the loss); the test curves on the test set after each epoch.}
+\label{fig:curves}
+\end{figure}
+
+\textbf{Reading the curves.} The training loss lies above the test loss and, until about epoch 165, the training accuracy lies below the test accuracy. This is not under-fitting: the training numbers are computed on cropped, flipped and Cutout images with a label-smoothed loss, the test numbers on clean images with the plain cross-entropy. The accuracy rises quickly to about 80\% in the first 25 epochs and then slowly while the learning rate is high; most of the remaining gain (from 87\% at epoch 100 to 95.4\%) comes in the second half, when the cosine schedule lowers the learning rate.
+
+\textbf{Failure modes.}
+\begin{itemize}
+\item \emph{Noisy evaluation at a high learning rate.} Between epochs 21 and 60 the test accuracy fluctuates with a standard deviation of 2.2 points from one epoch to the next, with a drop to 74.7\% at epoch 41 (from 81\% the epoch before and after). Large SGD steps move the weights faster than the BatchNorm running statistics follow. Over the last 20 epochs the standard deviation is 0.18 points. A model taken from the middle of training would therefore be unreliable; the schedule has to be run to the end.
+\item \emph{Over-fitting.} The network fits the training set almost perfectly (\BaselineTrainAcc\%) but makes 4.6\% errors on the test set, in spite of weight decay, label smoothing, dropout and Cutout. The remaining errors are a generalization limit, not an optimization limit.
+\item \emph{Cat against dog.} 109 of the 464 test errors (23\%) are cats classified as dogs (65) or dogs classified as cats (44). Cat is the worst class (89.7\%), followed by dog (93.1\%) and bird (93.9\%); all other classes are between 96.2\% and 97.6\% (Figure~\ref{fig:confusion}).
+\item \emph{Errors stay inside the super-category.} 87\% of the errors confuse an animal with another animal or a vehicle with another vehicle: automobile and truck (41 errors), ship and airplane (32). At $32\times32$ pixels these classes share shape, texture and background (sky, water, road).
+\item \emph{Confident mistakes.} The mean confidence is 0.90 on correct predictions and 0.70 on wrong ones, but 62 errors have a confidence above 0.9, which is close to the maximum that label smoothing allows. Figure~\ref{fig:failures} shows the most confident ones: unusual viewpoints and close-ups (the head of a bird taken for a cat), untypical colours (a dark green dog taken for a frog), small objects on a large background, and objects seen from above (a boat taken for a car).
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.36\linewidth}
+\includegraphics[width=\linewidth]{figures/confusion.png}
+\end{minipage}\hfill
+\begin{minipage}{0.62\linewidth}
+\includegraphics[width=\linewidth]{figures/failures.png}
+\end{minipage}
+\caption{Left: number of test errors for every pair of true and predicted class. Right: the 12 wrong test predictions with the highest confidence.}
+\label{fig:confusion}\label{fig:failures}
+\end{figure}
+
+A further failure mode showed up only during compression and is described in Question 3: the BatchNorm statistics of this network are tied to the augmented training distribution, and re-estimating them on un-augmented training images costs 2.7 points of test accuracy even without any quantization.
 
 %=====================================================================
 \section*{Question 2: Model compression implementation}

@@ -180,6 +180,6 @@
  "cat_dog_errors": 109,
  "errors_within_animal_or_vehicle_group": 0.8706896305084229,
  "mean_conf_correct": 0.8976478576660156,
- "mean_conf_wrong": 0.699112594127655,
+ "mean_conf_wrong": 0.6991126537322998,
  "wrong_with_conf_above_0.9": 62
 }

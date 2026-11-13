@@ -1,0 +1,13 @@
+\begin{tabular}{lrrrrr}
+\toprule
+Activation tensors & Tensors & Elements & Bits & FP32 bytes & Compressed bytes \\
+\midrule
+Input image (uint8 pixels) & 1 & 3,072 & 8 & 12,288 & 3,072 \\
+ReLU6 feature maps (stem, expand, depthwise, head) & 35 & 1,502,208 & 8 & 6,008,832 & 1,502,208 \\
+Linear bottleneck outputs and residual sums & 27 & 208,384 & 8 & 833,536 & 208,384 \\
+Pooled feature vector & 1 & 1,280 & 8 & 5,120 & 1,280 \\
+Logits & 1 & 10 & 32 & 40 & 40 \\
+\midrule
+Total (one image) & 65 & 1,714,954 & 8.00 (avg) & 6,859,816 & 1,714,984 \\
+\bottomrule
+\end{tabular}

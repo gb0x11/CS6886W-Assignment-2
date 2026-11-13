@@ -93,7 +93,7 @@ def main():
     idx = torch.nonzero(wrong).squeeze(1)
     idx = idx[conf[idx].argsort(descending=True)][:12]
     images = test.images[idx.to(device)].cpu().permute(0, 2, 3, 1).numpy()
-    fig, axes = plt.subplots(2, 6, figsize=(9.0, 3.5))
+    fig, axes = plt.subplots(2, 6, figsize=(9.0, 4.1))
     for ax, img, i in zip(axes.flat, images, idx.tolist()):
         ax.imshow(np.asarray(img), interpolation="nearest")
         ax.set_title(f"true: {CLASSES[labels[i]]}\npred: {CLASSES[pred[i]]} ({conf[i]:.2f})",
@@ -101,7 +101,7 @@ def main():
         ax.axis("off")
     fig.suptitle("The 12 most confident wrong predictions on the test set", x=0.01, ha="left",
                  fontsize=9, fontweight="bold")
-    fig.tight_layout()
+    fig.tight_layout(h_pad=1.6)
     fig.savefig("report/figures/failures.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 

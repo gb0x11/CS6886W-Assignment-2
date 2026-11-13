@@ -1,0 +1,7 @@
+name,family,method,w_bits,w_nominal,mixed,a_bits,a_bits_linear,acc,drop,ptq_acc,size_mb,ratio,w_ratio,a_ratio,a_peak_ratio,overhead,epochs
+ptq_w3_a3,ptq,ptq,3,3,False,3,3,64.05,31.31,64.78,0.85411,10.142,10.667,10.634,10.667,0.077758,0
+ptq_w4_a4,ptq,ptq,4,4,False,4,4,91.11,4.25,91.03,1.1167,7.7577,8,7.9854,8,0.059475,0
+ptq_w4_a8,ptq,ptq,4,4,False,8,8,95.02,0.34,95.04,1.1167,7.7577,8,3.9999,4,0.059475,0
+ptq_w6_a6,ptq,ptq,6,6,False,6,6,94.94,0.42,94.98,1.6418,5.2764,5.3333,5.33,5.3333,0.040452,0
+ptq_w8_a4,ptq,ptq,8,8,False,4,4,93.48,1.88,93.43,2.1669,3.9977,4,7.9854,8,0.030649,0
+ptq_w8_a8,ptq,ptq,8,8,False,8,8,95.3,0.059998,95.3,2.1669,3.9977,4,3.9999,4,0.030649,0
