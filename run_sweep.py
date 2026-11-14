@@ -4,6 +4,7 @@
     python run_sweep.py --group ptq        # post-training quantization points (minutes)
     python run_sweep.py --group qat        # quantization-aware fine-tuning points
     python run_sweep.py --group mixed      # sensitivity-guided mixed precision
+    python run_sweep.py --group acts       # activation bit-widths around the best allocations
     python run_sweep.py                    # everything
 
 A configuration is skipped when results/runs/<name>.json already exists, so
@@ -19,6 +20,8 @@ import sys
 # the network is most sensitive to: the stem and the classifier weights and
 # the narrow linear-bottleneck activations stay at 8 bits.
 PROTECT = dict(w_bits_first=8, w_bits_last=8, a_bits_linear=8)
+# Post-training tests showed that 6 bits are enough for the linear tensors.
+PROTECT6 = dict(w_bits_first=8, w_bits_last=8, a_bits_linear=6)
 
 
 def w(wb, ab, **kw):
@@ -39,8 +42,12 @@ SWEEP = {
               dict(method="qat", mixed_avg_bits=2.2, activation_quant_bits=4, **PROTECT),
               dict(method="qat", mixed_avg_bits=2.5, activation_quant_bits=3, **PROTECT)],
     # Quantization-aware fine-tuning, the same bit-width everywhere (no protection).
-    "qat": [dict(method="qat", **w(4, 4)), dict(method="qat", **w(3, 3)),
-            dict(method="qat", **w(2, 2))],
+    "qat": [dict(method="qat", **w(4, 4)), dict(method="qat", **w(3, 3))],
+    # Activation bit-widths around the best weight allocations; the linear tensors at 6 bits.
+    "acts": [dict(method="qat", mixed_avg_bits=3.0, activation_quant_bits=4, **PROTECT6),
+             dict(method="qat", mixed_avg_bits=3.0, activation_quant_bits=5, **PROTECT6),
+             dict(method="qat", mixed_avg_bits=3.0, activation_quant_bits=6, **PROTECT6),
+             dict(method="qat", mixed_avg_bits=2.5, activation_quant_bits=5, **PROTECT6)],
 }
 
 

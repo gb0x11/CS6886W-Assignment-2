@@ -44,7 +44,8 @@ plt.rcParams.update({
 FAMILY = {"ptq": ("Post-training quantization", ORANGE, "s"),
           "qat": ("QAT, uniform bit-width", BLUE, "o"),
           "protect": ("QAT, sensitive tensors at 8 bits", AQUA, "D"),
-          "mixed": ("QAT, mixed precision (allocator)", MAGENTA, "^")}
+          "mixed": ("QAT, mixed precision (allocator)", MAGENTA, "^"),
+          "acts": ("QAT, mixed precision, linear tensors at 6 bits", YELLOW, "v")}
 
 
 def tex(s) -> str:
@@ -119,8 +120,10 @@ def tradeoff(df, baseline_acc, best, path):
             b = df[df["name"] == best].iloc[0]
             ax.scatter([b["ratio"]], [b["acc"]], s=190, facecolor="none", edgecolor=INK,
                        linewidth=1.3, zorder=4)
-    axes[0].legend(loc="lower left", fontsize=7.5)
+    # Legend under the panels, so that it can never cover a point.
+    handles, labels = axes[0].get_legend_handles_labels()
     fig.tight_layout()
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=3, fontsize=7.5)
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
 
