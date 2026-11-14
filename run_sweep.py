@@ -30,9 +30,6 @@ SWEEP = {
     "ptq": [dict(method="ptq", **w(8, 8)), dict(method="ptq", **w(6, 6)),
             dict(method="ptq", **w(4, 8)), dict(method="ptq", **w(8, 4)),
             dict(method="ptq", **w(4, 4)), dict(method="ptq", **w(3, 3))],
-    # Quantization-aware fine-tuning, the same bit-width everywhere.
-    "qat": [dict(method="qat", **w(4, 4)), dict(method="qat", **w(3, 3)),
-            dict(method="qat", **w(2, 2))],
     # Fine-tuning with the sensitive tensors protected.
     "protect": [dict(method="qat", **w(4, 4), **PROTECT), dict(method="qat", **w(3, 4), **PROTECT),
                 dict(method="qat", **w(2, 4), **PROTECT), dict(method="qat", **w(3, 3), **PROTECT)],
@@ -41,6 +38,9 @@ SWEEP = {
               dict(method="qat", mixed_avg_bits=2.5, activation_quant_bits=4, **PROTECT),
               dict(method="qat", mixed_avg_bits=2.2, activation_quant_bits=4, **PROTECT),
               dict(method="qat", mixed_avg_bits=2.5, activation_quant_bits=3, **PROTECT)],
+    # Quantization-aware fine-tuning, the same bit-width everywhere (no protection).
+    "qat": [dict(method="qat", **w(4, 4)), dict(method="qat", **w(3, 3)),
+            dict(method="qat", **w(2, 2))],
 }
 
 

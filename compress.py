@@ -57,7 +57,7 @@ DEFAULTS = dict(
     # ---- calibration
     calib_images=2048, bn_recalibration=True, sensitivity_images=2000,
     # ---- quantization-aware fine-tuning
-    epochs=15, batch_size=128, lr=0.01, momentum=0.9, weight_decay=1e-4, warmup_epochs=1,
+    epochs=15, batch_size=128, lr=0.004, momentum=0.9, weight_decay=1e-4, warmup_epochs=1,
     kd_alpha=0.7, kd_temperature=4.0, label_smoothing=0.0, cutout=16, dropout=0.0,
     # ---- misc
     data_dir="./data", seed=42, device="auto", out_dir=".",
