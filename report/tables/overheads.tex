@@ -2,14 +2,14 @@
 \toprule
 Component & Count & Precision & Bytes & Share (\%) \\
 \midrule
-Weight codes (bit-packed) & 2,202,560 weights & 4.00 bits (avg) & 1,101,280 & 94.05 \\
-Per-channel scales & 17,066 channels & 16 bits (FP16) & 34,132 & 2.91 \\
-Per-channel biases & 17,066 channels & 16 bits (FP16) & 34,132 & 2.91 \\
-Activation quantizer steps & 63 quantizers & 8 bytes each & 504 & 0.04 \\
-Layer metadata, input mean / std & 53 layers & 16 bytes each + 24 & 872 & 0.07 \\
+Weight codes (bit-packed) & 2,202,560 weights & 2.48 bits (avg) & 684,032 & 90.76 \\
+Per-channel scales & 17,066 channels & 16 bits (FP16) & 34,132 & 4.53 \\
+Per-channel biases & 17,066 channels & 16 bits (FP16) & 34,132 & 4.53 \\
+Activation quantizer steps & 63 quantizers & 8 bytes each & 504 & 0.07 \\
+Layer metadata, input mean / std & 53 layers & 16 bytes each + 24 & 872 & 0.12 \\
 \midrule
-Compressed model & & & 1,170,920 & 100.00 \\
-of which overhead & & & 69,640 & 5.95 \\
+Compressed model & & & 753,672 & 100.00 \\
+of which overhead & & & 69,640 & 9.24 \\
 FP32 model (parameters + BatchNorm buffers) & & 32 bits & 9,083,592 & \\
 \bottomrule
 \end{tabular}

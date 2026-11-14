@@ -11,10 +11,12 @@
 \makeatletter\g@addto@macro{\UrlBreaks}{\UrlOrds}\makeatother % allow long URLs to wrap
 \setlength{\parskip}{0.5em}
 \setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{4em}
 
 \newcommand{\repo}{\url{https://github.com/gb0x11/CS6886W-Assignment-2}}
 \input{numbers.tex}
 \input{links.tex}
+\newcommand{\FinalChoice}{\textbf{Choice of the final model.} (pending)}
 
 \begin{document}
 
@@ -198,7 +200,7 @@ with the step gradient scaled by $1/\sqrt{N q_p}$; it stores two small tensors p
 \begin{table}[H]
 \centering
 \small
-\input{tables/layers.tex}
+\resizebox{\linewidth}{!}{\input{tables/layers.tex}}
 \caption{Compression of the final model \texttt{\BestName} by layer type. Overhead bytes are the per-channel scales and biases and 16 bytes of metadata per layer.}
 \label{tab:layers}
 \end{table}
@@ -228,7 +230,7 @@ so the four BatchNorm vectors and the quantizer step collapse into one scale and
 \begin{itemize}
 \item \emph{Input image:} kept as its native 8-bit pixels (lossless), not reduced to the activation bit-width.
 \item \emph{Logits:} the 10 outputs stay in FP32 (40 bytes).
-\item \emph{Sensitive, tiny tensors:} in the final model the stem (864 weights) and the classifier (12{,}800 weights) keep 8-bit weights, and the linear-bottleneck outputs, residual sums and the pooled feature vector keep 8-bit activations. These tensors are 12\% of the activation memory and 0.6\% of the weights, and the network is most sensitive to them (Question 3).
+\item \emph{Sensitive, small tensors:} in the final model the stem (864 weights) and the classifier (12{,}800 weights) keep 8-bit weights, and the linear-bottleneck outputs, residual sums and the pooled feature vector are stored with \BestALinBits{} bits while the ReLU6 feature maps use \BestABits. These tensors are \SmallWeightPct\% of the weights and \LinActPct\% of the activation memory, and the network is far more sensitive to them than to the rest (Question 3).
 \item \emph{Scales and biases} are stored in FP16 rather than quantized to a few bits.
 \item \emph{Residual connections:} the sum of a block input and the block output is a new stored tensor and gets its own quantizer.
 \item \emph{Dropout} is an identity at inference and has no parameters.
@@ -241,7 +243,7 @@ Besides the weight codes, the compressed model has to keep the following in memo
 \begin{table}[H]
 \centering
 \small
-\input{tables/overheads.tex}
+\resizebox{\linewidth}{!}{\input{tables/overheads.tex}}
 \caption{In-memory size of the final model \texttt{\BestName}, split into weight codes and overheads.}
 \label{tab:overheads}
 \end{table}
@@ -259,12 +261,21 @@ The sizes are obtained by adding up the bytes of the actual buffers of the packe
 
 \subsection*{(a) Compression at different levels}
 
-\SweepIntro
+\NumRuns{} compression configurations were run, all from the same baseline and with seed 42 (Table~\ref{tab:sweep}). They form six groups, each of which answers one question.
+\begin{enumerate}
+\item \emph{Post-training quantization at the same bit-width everywhere} (6 runs, no training): what does compression cost for free?
+\item \emph{Quantization-aware fine-tuning at the same bit-width everywhere} (2 runs): how much does fine-tuning recover?
+\item \emph{The same, with the sensitive tensors protected} (4 runs): stem and classifier weights and the linear activations at 8 bits.
+\item \emph{Mixed precision} (4 runs): the allocator of Question 2(a) chooses one bit-width per layer for a target average of 3.0, 2.5 and 2.2 bits per weight.
+\item \emph{Activation bit-width} (4 runs): the two best weight allocations with 4, 5 and 6-bit ReLU6 feature maps and the linear activations lowered from 8 to 6 bits.
+\item \emph{The final model} (1 run): the selected configuration fine-tuned for longer.
+\end{enumerate}
+Every fine-tuning run in groups 2 to 5 uses the same recipe (15 epochs, about 40 minutes on the M1 Pro), so the runs differ only in their bit-widths.
 
 \begin{table}[H]
 \centering
 \footnotesize
-\input{tables/sweep.tex}
+\resizebox{\linewidth}{!}{\input{tables/sweep.tex}}
 \caption{All compression runs. ``W bits'' is the average number of bits per weight actually stored; ``A bits'' are the bit-widths of the ReLU6 feature maps and of the linear tensors; sizes and ratios are in-memory and include all overheads; accuracy is the test accuracy of the packed model. The final model is in bold.}
 \label{tab:sweep}
 \end{table}
@@ -285,7 +296,20 @@ The sizes are obtained by adding up the bytes of the actual buffers of the packe
 \label{fig:tradeoff}
 \end{figure}
 
-\SweepText
+\textbf{What the comparison shows.}
+\begin{itemize}
+\item \emph{Eight bits are free, four bits are not.} Without any training, 8-bit weights and activations lose 0.06 points at 4.00$\times$, and 4-bit weights with 8-bit activations lose 0.34 points at 7.76$\times$. Activations are the harder part: 4-bit activations alone cost 1.88 points, 4 bits for both cost 4.25, and at 3 bits the network collapses to 64.05\%.
+\item \emph{Fine-tuning recovers a part of the loss.} With the same bit-width everywhere it lifts the 4-bit model from 91.11\% to 92.80\% and the 3-bit model from 64.05\% to 80.87\%.
+\item \emph{A few small tensors carry most of the damage.} Keeping the stem and classifier weights and the linear activations at 8 bits adds 0.006 MB and raises the 4-bit model from 92.80\% to 94.14\% and the 3-bit model from 80.87\% to 89.81\%. The linear bottlenecks are the narrowest tensors of MobileNet-v2 and have no non-linearity to hide quantization noise, which is the reason usually given for their sensitivity; the measurement agrees with it.
+\item \emph{Mixed precision beats one bit-width for all layers.} At the same size as uniform 3-bit weights (93.17\%, 10.05$\times$) the allocator reaches 94.13\% at 10.30$\times$, that is, the accuracy of the uniform 4-bit model (94.14\%, 7.71$\times$) at three quarters of its size. At 2.48 bits per weight it reaches 93.67\% at 12.05$\times$. Near 2 bits per weight the allocation still helps (90.53\% against 88.01\% for uniform 2-bit weights) but nearly every layer is then at the minimum bit-width and the accuracy falls quickly.
+\item \emph{Activation bits trade activation memory for accuracy, at no cost in model size.} Lowering the linear activations from 8 to 6 bits changes nothing (94.13\% and 94.21\%). For the ReLU6 feature maps, 3 bits are too few (90.79\%), and each further bit gives a smaller gain: 94.21\%, 94.67\% and 94.94\% for 4, 5 and 6 bits, while the activation compression ratio goes from 7.53$\times$ to 6.24$\times$ and 5.33$\times$.
+\end{itemize}
+
+\FinalChoice
+
+\textbf{Two things that did not work}, kept in the repository as ablations. (i) Re-estimating the BatchNorm statistics on \emph{un-augmented} training images, as is common, costs 2.6 points even at 8 bits (92.68\% instead of 95.30\%; \texttt{results/ablation\_bn\_clean\_images}). The baseline was trained with random crops and Cutout on every image, and its BatchNorm statistics describe that distribution; the full-precision network itself loses the same amount when its statistics are replaced by clean-image ones. All runs above re-estimate on augmented batches. (ii) A fine-tuning learning rate of 0.01 was too high: the training accuracy stopped improving and the test accuracy became noisy (92.49\% for uniform 4-bit, against 92.80\% with 0.004; \texttt{results/ablation\_qat\_lr0.01}).
+
+\textbf{Limits of these numbers.} Every configuration was run once, with one seed. The test accuracy moves by about $\pm0.15$ points from epoch to epoch at the end of fine-tuning, so differences of that size between two runs are not meaningful. The configurations were also compared on the test set itself, because no separate validation split was held out, so the accuracy of the selected model is a slightly optimistic estimate. The reported accuracy of each run is that of its last epoch, not of its best epoch.
 
 %=====================================================================
 \section*{Question 4: Compression analysis}
@@ -294,16 +318,29 @@ All numbers in this section are for the final model \texttt{\BestName}.
 
 \subsection*{(a) Compression ratio of the weights}
 
-\WeightText
+The \FPWeightBytes{} bytes of the 2{,}202{,}560 convolution and linear weights in FP32 become \BestWeightBytes{} bytes of bit-packed codes:
+\[
+\text{weight compression ratio} = \frac{\FPWeightBytes}{\BestWeightBytes} = \textbf{\BestWeightRatio}\times,
+\]
+that is, \BestAvgWBits{} bits per weight on average.
+The bit-width differs per layer (Figure~\ref{fig:bits}): from \BestMinWBits{} bits in \BestTwoBitLayers{} large $1\times1$ convolutions to \BestMaxWBits{} bits in the stem, the first depthwise layer and the classifier. The number is measured as the length of the packed byte buffers of the model in memory, so it includes the padding of each layer to a whole byte. It does not include the scales and biases; those are overheads and enter the model compression ratio, which is therefore lower (\BestRatio$\times$). Across all runs the highest weight ratio is \MaxWeightRatio$\times$ (uniform 2-bit weights), at an accuracy of 88.01\%, which is not a usable model.
 
 \subsection*{(b) Compression ratio of the activations}
 
-\ActText
+\textbf{How it is measured.} One test image is passed through the packed model in a mode in which every tensor that has to be kept between two layers is stored as bit-packed integer codes, with the same packing routine as the weights (\texttt{ActivationTracer} in \texttt{compressor/tracer.py}). The byte lengths of all those buffers are added up and compared with the bytes of the same tensors in FP32, which are counted independently with forward hooks on the uncompressed model. The count covers all 65 tensors of the forward pass: the input image, the output of every convolution (after ReLU6 where there is one), every residual sum, the pooled feature vector and the logits.
+\[
+\text{activation compression ratio} = \frac{\BestActFPHookBytes \text{ bytes (FP32)}}{\BestActMeasuredBytes \text{ bytes (packed)}} = \textbf{\BestActRatio}\times
+\]
+(\FPActMB{} MB $\to$ \BestActMB{} MB per image, \BestAvgABits{} bits per element on average). A second number matters for a device: the largest amount of activation memory alive at one time (the input and output of a layer, plus the block input when a residual connection is pending). It falls from \FPActPeakMB{} MB to \BestActPeakMB{} MB, a ratio of \BestActPeakRatio$\times$.
+
+Table~\ref{tab:acts} shows where the memory is. The ReLU6 feature maps of the expanded layers dominate, so their bit-width (\BestABits) sets the ratio; the linear tensors are \LinActPct\% of the FP32 memory and can afford one bit more. The input stays at its native 8 bits and the logits in FP32. Across all runs the highest activation ratio is \MaxActRatio$\times$ (3-bit activations everywhere), at an accuracy that is not usable.
+
+One qualification: PyTorch has no integer convolution for sub-byte codes, so while a layer executes its input is expanded to floating point. The ratio describes the tensors as they are stored between layers, which is what an integer runtime would hold; it is not the peak memory of this PyTorch process.
 
 \begin{table}[H]
 \centering
 \small
-\input{tables/activations.tex}
+\resizebox{\linewidth}{!}{\input{tables/activations.tex}}
 \caption{Activation tensors of one forward pass of one image, by type.}
 \label{tab:acts}
 \end{table}
@@ -317,14 +354,18 @@ All numbers in this section are for the final model \texttt{\BestName}.
 
 \subsection*{(v) Final approximated model size after compression}
 
-\FinalSizeText
+\[
+\text{final model size} = \textbf{\BestSizeMB{} MB} \;(\BestSizeBytes \text{ bytes}), \qquad
+\text{model ratio} = \frac{\FPModelBytes}{\BestSizeBytes} = \textbf{\BestRatio}\times .
+\]
+This is the sum of the buffers that the packed model holds in memory (Table~\ref{tab:overheads}): \BestWeightBytes{} bytes of weight codes and \BestOverheadBytes{} bytes of overheads (\BestOverheadPct\% of the model). The reference is the FP32 model with its BatchNorm buffers, \FPModelMB{} MB. The saved file \texttt{checkpoints/compressed/best.pt} is \BestCkptMB{} MB; it is slightly larger than the in-memory size because of the container format of \texttt{torch.save}, and no file-level compression is applied or counted. The model reaches \BestAcc\% test accuracy, \BestDrop{} points below the baseline, and the numbers can be reproduced with \texttt{python test.py --checkpoint checkpoints/compressed/best.pt}.
 
 %=====================================================================
 \section*{Question 5: Reproducibility and repository}
 
 \textbf{(a) Code structure.} Training, evaluation and compression are separate:
 \begin{center}
-\small
+\footnotesize
 \begin{tabular}{ll}
 \toprule
 File & Responsibility \\
@@ -347,7 +388,7 @@ File & Responsibility \\
 
 \textbf{(b) README.} The README gives the exact commands, the environment (macOS, Apple M1 Pro, Python 3.14.3, torch 2.14.1, torchvision 0.29.1, wandb 0.31.0; all pinned in \texttt{requirements.txt}) and the seed configuration (seed 42 for Python, NumPy, PyTorch, shuffling, augmentation and calibration subsets).
 
-\textbf{(c) Repository:} \repo. It contains the trained baseline (\texttt{checkpoints/baseline.pt}) and the final compressed model (\texttt{checkpoints/compressed/best.pt}). The main commands are
+\textbf{(c) Repository:} \repo. It contains the trained baseline (\path{checkpoints/baseline.pt}) and the final compressed model (\path{checkpoints/compressed/best.pt}). The main commands are
 \begin{Verbatim}[frame=single,fontsize=\small]
 python train.py                                      # baseline (Question 1)
 python test.py --weight_quant_bits 8 --activation_quant_bits 8   # template command (PTQ)

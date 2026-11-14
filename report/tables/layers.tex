@@ -2,13 +2,13 @@
 \toprule
 Layer type & Layers & Weights & Weight bits & Code bytes & Overhead bytes & Output activation \\
 \midrule
-Stem 3x3 conv & 1 & 864 & 4 & 432 & 152 & 8-bit unsigned \\
-1x1 expand convs & 16 & 751,872 & 4 & 375,936 & 28,800 & 8-bit unsigned \\
-3x3 depthwise convs & 17 & 64,224 & 4 & 32,112 & 28,952 & 8-bit unsigned \\
-1x1 project convs (linear) & 17 & 963,200 & 4 & 481,600 & 6,424 & 8-bit signed \\
-Head 1x1 conv & 1 & 409,600 & 4 & 204,800 & 5,144 & 8-bit unsigned \\
-Classifier (linear) & 1 & 12,800 & 4 & 6,400 & 56 & logits, FP32 \\
+Stem 3x3 conv & 1 & 864 & 8 & 864 & 152 & 5-bit unsigned \\
+1x1 expand convs & 16 & 751,872 & 2 to 5 & 196,848 & 28,800 & 5-bit unsigned \\
+3x3 depthwise convs & 17 & 64,224 & 3 to 8 & 28,368 & 28,952 & 5-bit unsigned \\
+1x1 project convs (linear) & 17 & 963,200 & 2 to 6 & 291,552 & 6,424 & 6-bit signed \\
+Head 1x1 conv & 1 & 409,600 & 3 & 153,600 & 5,144 & 5-bit unsigned \\
+Classifier (linear) & 1 & 12,800 & 8 & 12,800 & 56 & logits, FP32 \\
 \midrule
-Total & 53 & 2,202,560 & 4.00 (avg) & 1,101,280 & 69,528 & \\
+Total & 53 & 2,202,560 & 2.48 (avg) & 684,032 & 69,528 & \\
 \bottomrule
 \end{tabular}

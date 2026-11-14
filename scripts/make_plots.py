@@ -45,7 +45,8 @@ FAMILY = {"ptq": ("Post-training quantization", ORANGE, "s"),
           "qat": ("QAT, uniform bit-width", BLUE, "o"),
           "protect": ("QAT, sensitive tensors at 8 bits", AQUA, "D"),
           "mixed": ("QAT, mixed precision (allocator)", MAGENTA, "^"),
-          "acts": ("QAT, mixed precision, linear tensors at 6 bits", YELLOW, "v")}
+          "acts": ("QAT, mixed precision, linear tensors at 6 bits", YELLOW, "v"),
+          "final": ("Final model (longer fine-tuning)", GREEN, "*")}
 
 
 def tex(s) -> str:
@@ -101,7 +102,8 @@ def tradeoff(df, baseline_acc, best, path):
         for fam, (label, color, marker) in FAMILY.items():
             d = df[df["family"] == fam]
             if len(d):
-                ax.scatter(d["ratio"], d["acc"], s=42, color=color, marker=marker, label=label,
+                ax.scatter(d["ratio"], d["acc"], s=110 if marker == "*" else 42, color=color,
+                           marker=marker, label=label,
                            edgecolor="white", linewidth=0.8, zorder=3)
         ax.axhline(baseline_acc, color=INK2, lw=1, ls="--", zorder=1)
         ax.set_xlabel("Model compression ratio (in memory, all overheads included)")
@@ -342,6 +344,23 @@ def numbers(base, run, df, path):
         "MaxRatio": f"{df['ratio'].max():.2f}", "MaxWeightRatio": f"{df['w_ratio'].max():.2f}",
         "MaxActRatio": f"{df['a_ratio'].max():.2f}",
     }
+    acts, layers, c = run["activations"], run["layers"], run["config"]
+    linear = [a for a in acts if a["name"].endswith((".project", ".add")) or a["name"] == "pool"]
+    small = [l for l in layers if l["kind"] in ("stem", "classifier")]
+    bits = [l["bits"] for l in layers]
+    macros.update({
+        "BestABits": str(c["activation_quant_bits"]),
+        "BestALinBits": str(c.get("a_bits_linear") or c["activation_quant_bits"]),
+        "LinActPct": f"{100 * sum(a['fp32_bits'] for a in linear) / sum(a['fp32_bits'] for a in acts):.0f}",
+        "SmallWeightPct": f"{100 * sum(l['weights'] for l in small) / sum(l['weights'] for l in layers):.1f}",
+        "BestWeightBytes": f"{f['weight_bytes']:,}", "FPWeightBytes": f"{f['fp32_weight_bytes']:,}",
+        "BestMinWBits": str(min(bits)), "BestMaxWBits": str(max(bits)),
+        "BestTwoBitLayers": str(sum(b == 2 for b in bits)),
+        "BestActFPHookBytes": f"{f['act_fp32_hook_bytes']:,}",
+        "BestTrainMin": f"{f['train_time_s'] / 60:.0f}",
+        "BestCkptMB": f"{f['checkpoint_file_mb']:.3f}",
+        "BestLr": f"{c['lr']:g}",
+    })
     write(path, [rf"\newcommand{{\{k}}}{{{v}}}" for k, v in macros.items()])
 
 
