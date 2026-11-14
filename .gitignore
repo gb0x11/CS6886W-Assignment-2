@@ -32,3 +32,6 @@ CS6886W_20206___Assignment_2.pdf
 .env
 *.token
 .netrc
+
+# working copy of the report (the submitted file is report/CS25M508_GowthamB.pdf)
+report/report.pdf

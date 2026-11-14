@@ -111,8 +111,15 @@ def tradeoff(df, baseline_acc, best, path):
             ax.set_ylim(baseline_acc - 6, baseline_acc + 0.8)
             ax.set_title("Zoom: within 6 points of the baseline", loc="left")
             for _, r in df[df["acc"] > baseline_acc - 6].iterrows():
-                ax.annotate(short_label(r), (r["ratio"], r["acc"]), fontsize=6.5, color=INK,
-                            xytext=(4, -9), textcoords="offset points")
+                # Several runs share one x position (same weights, other activation
+                # bits): spread their labels so that the texts do not collide.
+                fam = r["family"]
+                left = fam == "acts" and r["ratio"] < 11
+                offset = (9, 5) if fam == "final" else (-5, 2) if left else (4, -9)
+                label = "final: " + short_label(r) if fam == "final" else short_label(r)
+                ax.annotate(label, (r["ratio"], r["acc"]), fontsize=6.5, color=INK,
+                            xytext=offset, textcoords="offset points",
+                            ha="right" if left else "left")
         else:
             ax.set_ylabel("Test top-1 accuracy (%)")
             ax.set_title("All compression runs", loc="left")

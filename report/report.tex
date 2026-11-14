@@ -16,7 +16,7 @@
 \newcommand{\repo}{\url{https://github.com/gb0x11/CS6886W-Assignment-2}}
 \input{numbers.tex}
 \input{links.tex}
-\newcommand{\FinalChoice}{\textbf{Choice of the final model.} (pending)}
+\newcommand{\FinalChoice}{\textbf{Choice of the final model.} The rule, fixed before the last group of runs, was: the highest model compression ratio among the configurations that lose at most 1 point of test accuracy. After the 15-epoch runs, the 2.95-bit allocation with 5-bit activations met it (94.67\%, 10.30$\times$) and the 2.48-bit allocation with 5-bit activations missed it by 0.04 points (94.32\%, 12.05$\times$). The second one was therefore fine-tuned once more from the baseline for 40 epochs instead of 15, with nothing else changed. It reached \textbf{\BestAcc\%} (drop of \BestDrop{} points) at \textbf{\BestRatio$\times$} and is the final model, \texttt{\BestName}. The gain of the longer schedule (0.16 points) is of the size of the epoch-to-epoch noise, so it should be read as ``about 1 point below the baseline at 12$\times$'' and not as a sharp result. Where accuracy matters more than size, the 2.95-bit model with 6-bit activations (94.94\%, 10.30$\times$) is the better choice; where activation memory matters more, 4-bit activations give 7.53$\times$ on the activations for 94.21\%.}
 
 \begin{document}
 
@@ -389,12 +389,12 @@ File & Responsibility \\
 \textbf{(b) README.} The README gives the exact commands, the environment (macOS, Apple M1 Pro, Python 3.14.3, torch 2.14.1, torchvision 0.29.1, wandb 0.31.0; all pinned in \texttt{requirements.txt}) and the seed configuration (seed 42 for Python, NumPy, PyTorch, shuffling, augmentation and calibration subsets).
 
 \textbf{(c) Repository:} \repo. It contains the trained baseline (\path{checkpoints/baseline.pt}) and the final compressed model (\path{checkpoints/compressed/best.pt}). The main commands are
-\begin{Verbatim}[frame=single,fontsize=\small]
-python train.py                                      # baseline (Question 1)
+\begin{Verbatim}[frame=single,fontsize=\footnotesize]
+python train.py                                                  # baseline (Question 1)
 python test.py --weight_quant_bits 8 --activation_quant_bits 8   # template command (PTQ)
-python run_sweep.py                                  # all compression runs (Question 3)
+python run_sweep.py                                              # all runs (Question 3)
 python test.py --checkpoint checkpoints/compressed/best.pt       # final compressed model
-python -m pytest tests -q                            # unit tests
+python -m pytest tests -q                                        # unit tests
 \end{Verbatim}
 
 \end{document}

@@ -10,7 +10,51 @@ bit-packing of the weight codes. No compression library or API is used
 (nothing from `torch.quantization`, `torch.ao`, `torch.nn.utils.prune` or any
 other package). All sizes are in-memory sizes and include every overhead.
 
-<!-- RESULTS -->
+## Results
+
+| | |
+| --- | --- |
+| Baseline (FP32 MobileNet-v2, 200 epochs) | **95.36 %** test top-1, 8.663 MB in memory |
+| Final compressed model (`checkpoints/compressed/best.pt`) | **94.48 %** test top-1 (0.88 points below the baseline) |
+| Final model size | **0.719 MB** (753,672 bytes), overheads included |
+| Model compression ratio | **12.05x** |
+| Weight compression ratio | **12.88x** (2.48 bits per weight on average, 2 to 8 bits per layer) |
+| Activation compression ratio | **6.24x** over all feature maps of one image (6.30x at the memory peak) |
+| Storage overheads | 69,640 bytes (9.2 % of the compressed model) |
+
+The final model uses mixed-precision weights (the allocator's table for an
+average of 2.5 bits), 8-bit weights in the stem and the classifier, 5-bit
+activations after ReLU6 and 6-bit activations for the linear tensors, and was
+fine-tuned for 40 epochs:
+
+```bash
+python compress.py --method qat --mixed_avg_bits 2.5 --activation_quant_bits 5 \
+    --w_bits_first 8 --w_bits_last 8 --a_bits_linear 6 --epochs 40 \
+    --name final_mix2.5_a5_f8_l8_al6_e40 --group final
+```
+
+A selection of the 21 compression runs (all of them are in `results/summary.csv`
+and in the report):
+
+| Configuration | Test acc. | Model ratio | Size (MB) | Weight ratio | Act. ratio |
+| --- | --- | --- | --- | --- | --- |
+| PTQ, W8 / A8 | 95.30 % | 4.00x | 2.167 | 4.00x | 4.00x |
+| PTQ, W4 / A8 | 95.02 % | 7.76x | 1.117 | 8.00x | 4.00x |
+| PTQ, W4 / A4 | 91.11 % | 7.76x | 1.117 | 8.00x | 7.99x |
+| QAT, W4 / A4, same bit-width everywhere | 92.80 % | 7.76x | 1.117 | 8.00x | 7.99x |
+| QAT, W4 / A4, stem, classifier and linear activations at 8 bits | 94.14 % | 7.71x | 1.123 | 7.95x | 7.12x |
+| QAT, mixed 2.95 bits / A4 | 94.21 % | 10.30x | 0.841 | 10.85x | 7.53x |
+| QAT, mixed 2.95 bits / A5 | 94.67 % | 10.30x | 0.841 | 10.85x | 6.24x |
+| QAT, mixed 2.95 bits / A6 | 94.94 % | 10.30x | 0.841 | 10.85x | 5.33x |
+| **QAT, mixed 2.48 bits / A5, 40 epochs (final)** | **94.48 %** | **12.05x** | **0.719** | **12.88x** | **6.24x** |
+| QAT, mixed 2.05 bits / A4 | 90.53 % | 14.33x | 0.605 | 15.61x | 7.12x |
+| QAT, W2 / A4 | 88.01 % | 14.41x | 0.601 | 15.71x | 7.12x |
+
+W&B project: https://forge.coreweave.com/wandb/cs25m508-indian-institute-of-technology/cs6886w-a2-mobilenetv2-compression
+
+W&B report with the parallel-coordinates chart: https://forge.coreweave.com/wandb/cs25m508-indian-institute-of-technology/cs6886w-a2-mobilenetv2-compression/reports/CS6886W-A2:-MobileNet-v2-compression-sweep--VmlldzoxODMwNDQ3NA==
+
+Report: `report/CS25M508_GowthamB.pdf`
 
 ## Repository layout
 
